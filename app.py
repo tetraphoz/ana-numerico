@@ -1,187 +1,244 @@
-import sys
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QGridLayout,
-    QLineEdit,
-    QPushButton,
+    QListWidget,
+    QStackedWidget,
     QLabel,
-    QScrollArea,
-    QMessageBox,
+    QPushButton,
+    QTextEdit,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QLineEdit,
 )
+from PySide6.QtGui import QFont
+import pyqtgraph as pg
+import sympy as sp
+import numpy as np
+
+from metodos.gaussSeidel import gauss_seidel
+from metodos.reglaFalsa import regla_falsa
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Gauss-Seidel Equation Solver")
-        self.setGeometry(100, 100, 800, 600)
 
-        # Central widget and main layout
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        self.setWindowTitle("Solver de Métodos Numéricos")
 
-        # System size input
-        size_layout = QHBoxLayout()
-        self.n_input = QLineEdit()
-        self.n_input.setPlaceholderText("Enter system size (N)")
-        size_layout.addWidget(QLabel("System size (N):"))
-        size_layout.addWidget(self.n_input)
+        # Layout principal
+        layout_principal = QHBoxLayout()
 
-        self.generate_btn = QPushButton("Generate Matrix")
-        self.generate_btn.clicked.connect(self.generate_matrix_inputs)
-        size_layout.addWidget(self.generate_btn)
-        main_layout.addLayout(size_layout)
+        metodos = ["Gauss-Seidel", "Regla Falsa"]
 
-        # Matrix input scroll area
-        self.matrix_scroll = QScrollArea()
-        self.matrix_scroll.setWidgetResizable(True)
-        self.matrix_widget = QWidget()
-        self.matrix_layout = QGridLayout(self.matrix_widget)
-        self.matrix_scroll.setWidget(self.matrix_widget)
-        main_layout.addWidget(self.matrix_scroll)
+        # Creamos nuestras pestañas
+        self.lista_navegacion = QListWidget()
+        self.lista_navegacion.addItems(metodos)
+        self.lista_navegacion.setFixedWidth(200)
+        self.lista_navegacion.currentRowChanged.connect(self.cambiar_pagina)
+        layout_principal.addWidget(self.lista_navegacion)
 
-        # Initial guesses
-        main_layout.addWidget(QLabel("Initial Guesses:"))
-        self.initial_guess_widget = QWidget()
-        self.initial_guess_layout = QHBoxLayout(self.initial_guess_widget)
-        main_layout.addWidget(self.initial_guess_widget)
+        self.widget_apilado = QStackedWidget()
+        self.widget_apilado.addWidget(self.pagina_gauss_seidel())
+        self.widget_apilado.addWidget(self.pagina_regla_falsa())
+        layout_principal.addWidget(self.widget_apilado)
 
-        # Parameters
-        params_layout = QHBoxLayout()
-        self.tolerance_input = QLineEdit("1e-6")
-        self.max_iter_input = QLineEdit("1000")
-        params_layout.addWidget(QLabel("Tolerance:"))
-        params_layout.addWidget(self.tolerance_input)
-        params_layout.addWidget(QLabel("Max Iterations:"))
-        params_layout.addWidget(self.max_iter_input)
-        main_layout.addLayout(params_layout)
+        # Creamos nuestra ventana principal
+        widget_central = QWidget()
+        widget_central.setLayout(layout_principal)
+        self.setCentralWidget(widget_central)
 
-        # Solve button and results
-        self.solve_btn = QPushButton("Solve System")
-        self.solve_btn.clicked.connect(self.solve_system)
-        main_layout.addWidget(self.solve_btn)
+    def cambiar_pagina(self, indice):
+        self.widget_apilado.setCurrentIndex(indice)
 
-        self.results_label = QLabel("Solution will be displayed here")
-        main_layout.addWidget(self.results_label)
+    def pagina_gauss_seidel(self):
+        pagina = QWidget()
+        layout = QVBoxLayout()
 
-    def generate_matrix_inputs(self):
+        etiqueta_titulo = QLabel("Gauss-Seidel")
+        etiqueta_titulo.setFont(QFont("Arial", 24, QFont.Bold))
+        layout.addWidget(etiqueta_titulo)
+
+        etiqueta_descripcion = QLabel(
+            "Resuelve un sistema de ecuaciones usando el método Gauss-Seidel."
+        )
+        etiqueta_descripcion.setWordWrap(True)
+        layout.addWidget(etiqueta_descripcion)
+
+        # Layout horizontal para las tablas de la matriz A y el vector b
+        layout_tablas = QHBoxLayout()
+
+        # Campos de entrada para la matriz A
+        etiqueta_matriz_a = QLabel("Matriz A:")
+        self.tabla_matriz_a = QTableWidget(3, 3)  # Tabla por defecto de 3x3
+        self.tabla_matriz_a.setFixedSize(300, 150)  # Tamaño más pequeño
+        self.tabla_matriz_a.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tabla_matriz_a.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        layout_tablas.addWidget(etiqueta_matriz_a)
+        layout_tablas.addWidget(self.tabla_matriz_a)
+
+        # Campos de entrada para el vector b
+        etiqueta_vector_b = QLabel("Vector b:")
+        self.tabla_vector_b = QTableWidget(3, 1)  # Tabla por defecto de 3x1
+        self.tabla_vector_b.setFixedSize(150, 150)  # Tamaño más pequeño
+        self.tabla_vector_b.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tabla_vector_b.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        layout_tablas.addWidget(etiqueta_vector_b)
+        layout_tablas.addWidget(self.tabla_vector_b)
+
+        layout.addLayout(layout_tablas)
+
+        # Botón de resolver
+        boton_resolver = QPushButton("Resolver")
+        boton_resolver.clicked.connect(self.resolver_gauss_seidel)
+        layout.addWidget(boton_resolver)
+
+        # Área de salida
+        self.salida_gauss_seidel = QTextEdit()
+        self.salida_gauss_seidel.setReadOnly(True)
+        layout.addWidget(self.salida_gauss_seidel)
+
+        pagina.setLayout(layout)
+        return pagina
+
+    def pagina_regla_falsa(self):
+        pagina = QWidget()
+        layout = QVBoxLayout()
+
+        etiqueta_titulo = QLabel("Regla Falsa")
+        etiqueta_titulo.setFont(QFont("Arial", 24, QFont.Bold))
+        layout.addWidget(etiqueta_titulo)
+
+        etiqueta_descripcion = QLabel(
+            """Encuentra la raíz de una función dentro de un intervalo.
+            """
+        )
+        etiqueta_descripcion.setWordWrap(True)
+        layout.addWidget(etiqueta_descripcion)
+
+        layout.addWidget(QLabel("Introduzca la función f(x)"))
+        self.entrada_funcion = QLineEdit()
+        self.entrada_funcion.setPlaceholderText("e.g., x**2 - 4")
+        layout.addWidget(self.entrada_funcion)
+
+        layout.addWidget(QLabel("Introduzca el intervalo [a, b]:"))
+        self.entrada_intervalo = QLineEdit()
+        self.entrada_intervalo.setPlaceholderText("e.g., 1 3")
+        layout.addWidget(self.entrada_intervalo)
+
+        # Botón de resolver
+        boton_resolver = QPushButton("Resolver")
+        boton_resolver.clicked.connect(self.resolver_regla_falsa)
+        layout.addWidget(boton_resolver)
+
+        # Gráfico y área de salida
+        layout_resultados = QHBoxLayout()
+        layout.addLayout(layout_resultados)
+
+        self.grafico = pg.PlotWidget()
+        self.grafico.setBackground("w")
+        self.grafico.showGrid(x=True, y=True)
+        layout_resultados.addWidget(self.grafico)
+
+        layout_resultados2 = QVBoxLayout()
+        layout_resultados.addLayout(layout_resultados2)
+
+        layout_resultados2.addWidget(QLabel("Resultados"))
+        self.salida_regla_falsa = QTextEdit()
+        self.salida_regla_falsa.setReadOnly(True)
+        layout_resultados2.addWidget(self.salida_regla_falsa)
+
+        pagina.setLayout(layout)
+        return pagina
+
+    def resolver_gauss_seidel(self):
         try:
-            N = int(self.n_input.text())
-        except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid system size!")
-            return
+            # Obtener la matriz A de la tabla
+            A = []
+            for i in range(self.tabla_matriz_a.rowCount()):
+                fila = []
+                for j in range(self.tabla_matriz_a.columnCount()):
+                    item = self.tabla_matriz_a.item(i, j)
+                    if item and item.text():
+                        fila.append(float(item.text()))
+                    else:
+                        fila.append(0.0)  # Valor por defecto si la celda está vacía
+                A.append(fila)
 
-        # Clear existing matrix inputs
-        for i in reversed(range(self.matrix_layout.count())):
-            self.matrix_layout.itemAt(i).widget().deleteLater()
-
-        # Create new matrix inputs
-        for row in range(N):
-            for col in range(N + 1):
-                le = QLineEdit()
-                if col < N:
-                    le.setPlaceholderText(f"A[{row+1}][{col+1}]")
+            # Obtener el vector b de la tabla
+            b = []
+            for i in range(self.tabla_vector_b.rowCount()):
+                item = self.tabla_vector_b.item(i, 0)
+                if item and item.text():
+                    b.append(float(item.text()))
                 else:
-                    le.setPlaceholderText(f"B[{row+1}]")
-                self.matrix_layout.addWidget(le, row, col)
+                    b.append(0.0)  # Valor por defecto si la celda está vacía
 
-        # Clear and create initial guess inputs
-        for i in reversed(range(self.initial_guess_layout.count())):
-            self.initial_guess_layout.itemAt(i).widget().deleteLater()
+            # Llamar a la función gauss_seidel
+            solucion, iteraciones = gauss_seidel(A, b)
 
-        for col in range(N):
-            le = QLineEdit("0")
-            le.setPlaceholderText(f"x[{col+1}]")
-            self.initial_guess_layout.addWidget(le)
+            # Mostrar la solución en el área de salida
+            self.salida_gauss_seidel.clear()
+            self.salida_gauss_seidel.append(f"Convergió en {iteraciones} iteraciones.")
+            for i, x_i in enumerate(solucion):
+                self.salida_gauss_seidel.append(f"x[{i+1}] = {x_i:.6f}")
 
-    def solve_system(self):
-        try:
-            N = int(self.n_input.text())
-        except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid system size!")
-            return
-
-        # Read matrix A and vector B
-        A = []
-        B = []
-        for row in range(N):
-            current_row = []
-            for col in range(N):
-                widget = self.matrix_layout.itemAtPosition(row, col).widget()
-                current_row.append(float(widget.text()))
-            A.append(current_row)
-            widget = self.matrix_layout.itemAtPosition(row, N).widget()
-            B.append(float(widget.text()))
-
-        # Read initial guesses
-        initial = [
-            float(self.initial_guess_layout.itemAt(i).widget().text()) for i in range(N)
-        ]
-
-        # Read parameters
-        try:
-            tol = float(self.tolerance_input.text())
-            max_iter = int(self.max_iter_input.text())
-        except ValueError:
-            QMessageBox.critical(self, "Error", "Invalid parameters!")
-            return
-
-        # Check diagonal elements
-        for i in range(N):
-            if A[i][i] == 0:
-                QMessageBox.critical(self, "Error", f"Zero on diagonal at row {i+1}!")
-                return
-
-        # Solve using Gauss-Seidel
-        try:
-            solution, iterations, converged = self.gauss_seidel(
-                A, B, initial, tol, max_iter
-            )
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-            return
+            self.salida_gauss_seidel.clear()
+            self.salida_gauss_seidel.append(f"Error: {str(e)}")
 
-        # Display results
-        result_text = []
-        if converged:
-            result_text.append(f"Converged in {iterations} iterations:")
-        else:
-            result_text.append(f"Maximum iterations reached ({iterations}):")
+    def resolver_regla_falsa(self):
 
-        for i, val in enumerate(solution):
-            result_text.append(f"x[{i+1}] = {val:.6f}")
+        # Obtener la función y el intervalo
+        expresion_funcion = self.entrada_funcion.text()
+        texto_intervalo = self.entrada_intervalo.text()
 
-        self.results_label.setText("\n".join(result_text))
+        try:
+            # Parsear la función con sympy
+            x = sp.symbols("x")
+            f = sp.sympify(expresion_funcion)
+            f_numerica = sp.lambdify(x, f, "numpy")
 
-    def gauss_seidel(self, A, B, initial, tol, max_iter):
-        n = len(A)
-        x = initial.copy()
-        converged = False
+            # Parsear el intervalo
+            a, b = map(float, texto_intervalo.split())
 
-        for iteration in range(max_iter):
-            max_error = 0.0
-            for i in range(n):
-                old_value = x[i]
-                sigma = sum(A[i][j] * x[j] for j in range(n) if j != i)
-                x[i] = (B[i] - sigma) / A[i][i]
-                error = abs(x[i] - old_value)
-                if error > max_error:
-                    max_error = error
+            # Graficar la función
+            x_valores = np.linspace(a, b, 100)
+            y_valores = f_numerica(x_valores)
+            self.grafico.clear()
+            self.grafico.plot(x_valores, y_valores, pen="b")
 
-            if max_error < tol:
-                converged = True
-                break
+            # Resolver usando el método de la regla falsa
+            raiz, iteraciones = regla_falsa(f_numerica, a, b)
 
-        return x, iteration + 1, converged
+            # Graficamos la raiz
+            self.grafico.plot([raiz], [0], symbol="+", symbolSize=10)
+            self.grafico.addLine(
+                y=0, pen="k"
+            )  # Línea horizontal en y=0 para referencia
+
+            # Mostrar la raíz en el área de salida
+            self.salida_regla_falsa.clear()
+            self.salida_regla_falsa.append(f"Función: {expresion_funcion}")
+            self.salida_regla_falsa.append(f"Intervalo: [{a}, {b}]")
+            self.salida_regla_falsa.append(f"Raíz encontrada: {raiz:.6f}")
+            self.salida_regla_falsa.append(f"Iteraciones: {iteraciones}")
+
+        except SyntaxError:
+            self.salida_regla_falsa.clear()
+            self.salida_regla_falsa.append("Revise los datos de entrada.")
+        except ValueError as e:
+            self.salida_regla_falsa.clear()
+            self.salida_regla_falsa.append(f"{str(e)}")
+        except Exception as e:
+            self.salida_regla_falsa.clear()
+            self.salida_regla_falsa.append(f"Error {type(e)}: {str(e)} ")
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+app = QApplication([])
+ventana = MainWindow()
+ventana.show()
+app.exec()
