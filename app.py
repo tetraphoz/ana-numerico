@@ -32,7 +32,8 @@ class MainWindow(QMainWindow):
         # Layout principal
         layout_principal = QHBoxLayout()
 
-        metodos = ["Gauss-Seidel", "Regla Falsa"]
+        # TODO: Implementar auto-añadir nombres de metodos
+        metodos = ["Regla Falsa", "Gauss-Seidel"]
 
         # Creamos nuestras pestañas
         self.lista_navegacion = QListWidget()
@@ -41,9 +42,10 @@ class MainWindow(QMainWindow):
         self.lista_navegacion.currentRowChanged.connect(self.cambiar_pagina)
         layout_principal.addWidget(self.lista_navegacion)
 
+        # El orden importa
         self.widget_apilado = QStackedWidget()
-        self.widget_apilado.addWidget(self.pagina_gauss_seidel())
         self.widget_apilado.addWidget(self.pagina_regla_falsa())
+        self.widget_apilado.addWidget(self.pagina_gauss_seidel())
         layout_principal.addWidget(self.widget_apilado)
 
         # Creamos nuestra ventana principal
@@ -113,7 +115,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(etiqueta_titulo)
 
         etiqueta_descripcion = QLabel(
-            """Encuentra la raíz de una función dentro de un intervalo.
+            """
+            Encuentra la raíz de una función dentro de un intervalo.
+            Nota: exp(x) = e^(x)
             """
         )
         etiqueta_descripcion.setWordWrap(True)
@@ -128,6 +132,18 @@ class MainWindow(QMainWindow):
         self.entrada_intervalo = QLineEdit()
         self.entrada_intervalo.setPlaceholderText("e.g., 1 3")
         layout.addWidget(self.entrada_intervalo)
+
+        layout.addWidget(QLabel("Introduzca la tolerancia."))
+        self.entrada_tol = QLineEdit()
+        self.entrada_tol.setPlaceholderText("1e-6")
+        self.entrada_tol.setText("1e-6")
+        layout.addWidget(self.entrada_tol)
+
+        layout.addWidget(QLabel("Introduzca la cantidad de iteraciones."))
+        self.entrada_maxiter = QLineEdit()
+        self.entrada_maxiter.setPlaceholderText("1e5")
+        self.entrada_maxiter.setText("1e5")
+        layout.addWidget(self.entrada_maxiter)
 
         # Botón de resolver
         boton_resolver = QPushButton("Resolver")
@@ -195,15 +211,32 @@ class MainWindow(QMainWindow):
         # Obtener la función y el intervalo
         expresion_funcion = self.entrada_funcion.text()
         texto_intervalo = self.entrada_intervalo.text()
+        texto_maxiter = self.entrada_maxiter.text()
+        texto_tol = self.entrada_tol.text()
 
         try:
+            if not expresion_funcion:  # Checamos que la funcion no este vacia
+                raise ValueError("Introduzca una función.")
+
+            if not texto_intervalo:  # Checamos que los intervalos no este vacios
+                raise ValueError("Introduzca el intervalo.")
+
             # Parsear la función con sympy
             x = sp.symbols("x")
             f = sp.sympify(expresion_funcion)
             f_numerica = sp.lambdify(x, f, "numpy")
 
-            # Parsear el intervalo
-            a, b = map(float, texto_intervalo.split())
+            try:
+                maxiter = float(texto_maxiter)
+                tol = float(texto_tol)
+            except:
+                raise ValueError("Valores erroneos en parámetros.")
+
+            try:
+                # Parsear el intervalo
+                a, b = map(float, texto_intervalo.split())
+            except ValueError:
+                raise ValueError("Revisar intervalo ingresado. Error de lectura")
 
             # Graficar la función
             x_valores = np.linspace(a, b, 100)
@@ -212,7 +245,7 @@ class MainWindow(QMainWindow):
             self.grafico.plot(x_valores, y_valores, pen="b")
 
             # Resolver usando el método de la regla falsa
-            raiz, iteraciones = regla_falsa(f_numerica, a, b)
+            raiz, iteraciones = regla_falsa(f_numerica, a, b, tol, maxiter)
 
             # Graficamos la raiz
             self.grafico.plot([raiz], [0], symbol="+", symbolSize=10)
@@ -226,19 +259,21 @@ class MainWindow(QMainWindow):
             self.salida_regla_falsa.append(f"Intervalo: [{a}, {b}]")
             self.salida_regla_falsa.append(f"Raíz encontrada: {raiz:.6f}")
             self.salida_regla_falsa.append(f"Iteraciones: {iteraciones}")
-
-        except SyntaxError:
-            self.salida_regla_falsa.clear()
-            self.salida_regla_falsa.append("Revise los datos de entrada.")
-        except ValueError as e:
-            self.salida_regla_falsa.clear()
-            self.salida_regla_falsa.append(f"{str(e)}")
         except Exception as e:
             self.salida_regla_falsa.clear()
-            self.salida_regla_falsa.append(f"Error {type(e)}: {str(e)} ")
+            self.salida_regla_falsa.append(f"Aviso: {str(e)} ")
 
 
 app = QApplication([])
 ventana = MainWindow()
+app.setStyleSheet(
+    """
+    QLabel{font-size: 18pt;}
+    QTextEdit{font-size: 14pt;}
+    QPushButton{font-size: 15pt;}
+    QLineEdit{font-size: 15pt;}
+    QListWidget{font-size: 15pt; font-weight:bold}
+    """
+)
 ventana.show()
 app.exec()
