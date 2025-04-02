@@ -80,18 +80,20 @@ class MainWindow(QMainWindow):
         # Campos de entrada para la matriz A
         etiqueta_matriz_a = QLabel("Matriz A:")
         self.tabla_matriz_a = QTableWidget(3, 3)  # Tabla por defecto de 3x3
-        self.tabla_matriz_a.setFixedSize(300, 150)  # Tamaño más pequeño
+        self.tabla_matriz_a.setFixedSize(300, 300)  # Tamaño más pequeño
         self.tabla_matriz_a.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tabla_matriz_a.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tabla_matriz_a.setItemDelegate(CenterAlignDelegate())
         layout_tablas.addWidget(etiqueta_matriz_a)
         layout_tablas.addWidget(self.tabla_matriz_a)
 
         # Campos de entrada para el vector b
         etiqueta_vector_b = QLabel("Vector b:")
         self.tabla_vector_b = QTableWidget(3, 1)  # Tabla por defecto de 3x1
-        self.tabla_vector_b.setFixedSize(150, 150)  # Tamaño más pequeño
+        self.tabla_vector_b.setFixedSize(300, 300)  # Tamaño más pequeño
         self.tabla_vector_b.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.tabla_vector_b.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.tabla_vector_b.setItemDelegate(CenterAlignDelegate())
         layout_tablas.addWidget(etiqueta_vector_b)
         layout_tablas.addWidget(self.tabla_vector_b)
 
@@ -147,9 +149,14 @@ class MainWindow(QMainWindow):
         self.tabla_datos_lagrange.horizontalHeader().setSectionResizeMode(
             QHeaderView.Stretch
         )
+        self.tabla_datos_lagrange.horizontalHeader().setDefaultAlignment(
+            Qt.AlignmentFlag.AlignCenter
+        )
         self.tabla_datos_lagrange.verticalHeader().setSectionResizeMode(
             QHeaderView.Stretch
         )
+        self.tabla_datos_lagrange.setItemDelegate(CenterAlignDelegate())
+
         layout.addWidget(self.tabla_datos_lagrange)
 
         # Campo para el valor a interpolar
@@ -429,7 +436,13 @@ class MainWindow(QMainWindow):
                     )
 
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            self.salida_lagrange.append(f"Error: {str(e)}.")
+
+
+class CenterAlignDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = Qt.AlignmentFlag.AlignCenter
 
 
 app = QApplication([])
