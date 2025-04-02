@@ -13,12 +13,13 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QLineEdit,
-    QMessageBox,
+    QStyledItemDelegate,
 )
 from PySide6.QtGui import QFont
 import pyqtgraph as pg
 import sympy as sp
 import numpy as np
+from PySide6.QtCore import Qt
 
 from metodos.gaussSeidel import gauss_seidel
 from metodos.reglaFalsa import regla_falsa
