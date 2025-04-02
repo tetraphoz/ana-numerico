@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QLineEdit,
+    QMessageBox,
 )
 from PySide6.QtGui import QFont
 import pyqtgraph as pg
@@ -21,6 +22,7 @@ import numpy as np
 
 from metodos.gaussSeidel import gauss_seidel
 from metodos.reglaFalsa import regla_falsa
+from metodos.lagrange import lagrange
 
 
 class MainWindow(QMainWindow):
@@ -33,7 +35,7 @@ class MainWindow(QMainWindow):
         layout_principal = QHBoxLayout()
 
         # TODO: Implementar auto-añadir nombres de metodos
-        metodos = ["Regla Falsa", "Gauss-Seidel"]
+        metodos = ["Regla Falsa", "Gauss-Seidel", "Lagrange"]
 
         # Creamos nuestras pestañas
         self.lista_navegacion = QListWidget()
@@ -46,6 +48,7 @@ class MainWindow(QMainWindow):
         self.widget_apilado = QStackedWidget()
         self.widget_apilado.addWidget(self.pagina_regla_falsa())
         self.widget_apilado.addWidget(self.pagina_gauss_seidel())
+        self.widget_apilado.addWidget(self.pagina_lagrange())
         layout_principal.addWidget(self.widget_apilado)
 
         # Creamos nuestra ventana principal
@@ -105,6 +108,96 @@ class MainWindow(QMainWindow):
 
         pagina.setLayout(layout)
         return pagina
+
+    def pagina_lagrange(self):
+        pagina = QWidget()
+        layout = QVBoxLayout()
+
+        # Título y descripción
+        etiqueta_titulo = QLabel("Interpolación de Lagrange")
+        etiqueta_titulo.setFont(QFont("Arial", 24, QFont.Bold))
+        layout.addWidget(etiqueta_titulo)
+
+        etiqueta_descripcion = QLabel(
+            "Introduce un conjunto de puntos (x, y) para generar el polinomio de interpolación."
+        )
+        etiqueta_descripcion.setWordWrap(True)
+        layout.addWidget(etiqueta_descripcion)
+
+        # Controles para la tabla de datos
+        layout_controles = QHBoxLayout()
+
+        # Botón para añadir filas
+        boton_agregar = QPushButton("+ Añadir punto")
+        boton_agregar.clicked.connect(self.agregar_fila_lagrange)
+        layout_controles.addWidget(boton_agregar)
+
+        # Botón para eliminar filas
+        boton_eliminar = QPushButton("- Eliminar punto")
+        boton_eliminar.clicked.connect(self.eliminar_fila_lagrange)
+        layout_controles.addWidget(boton_eliminar)
+        # TODO: Agregar refresh visual aqui
+
+        layout.addLayout(layout_controles)
+
+        # Tabla de datos
+        self.tabla_datos_lagrange = QTableWidget(3, 2)
+        self.tabla_datos_lagrange.setHorizontalHeaderLabels(["x", "y"])
+        self.tabla_datos_lagrange.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        self.tabla_datos_lagrange.verticalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        layout.addWidget(self.tabla_datos_lagrange)
+
+        # Campo para el valor a interpolar
+        layout_interpolar = QHBoxLayout()
+        etiqueta_interpolar = QLabel("Valor a interpolar (x):")
+        self.entrada_interpolar = QLineEdit()
+        self.entrada_interpolar.setPlaceholderText("Ingrese el valor x a interpolar")
+        layout_interpolar.addWidget(etiqueta_interpolar)
+        layout_interpolar.addWidget(self.entrada_interpolar)
+        layout.addLayout(layout_interpolar)
+
+        # Botón de resolver
+        boton_resolver = QPushButton("Calcular Polinomio")
+        boton_resolver.clicked.connect(self.resolver_lagrange)
+        layout.addWidget(boton_resolver)
+
+        # Gráfico y resultados
+        layout_resultados = QHBoxLayout()
+
+        # Gráfico
+        self.grafico_lagrange = pg.PlotWidget()
+        self.grafico_lagrange.setBackground("w")
+        self.grafico_lagrange.showGrid(x=True, y=True)
+        self.grafico_lagrange.setLabel("left", "y")
+        self.grafico_lagrange.setLabel("bottom", "x")
+        layout_resultados.addWidget(self.grafico_lagrange, stretch=2)
+
+        # Resultados
+        layout_texto = QVBoxLayout()
+        self.salida_lagrange = QTextEdit()
+        self.salida_lagrange.setReadOnly(True)
+        self.salida_lagrange.setFont(QFont("Courier New", 12))
+        layout_texto.addWidget(QLabel("Resultados:"))
+        layout_texto.addWidget(self.salida_lagrange)
+        layout_resultados.addLayout(layout_texto, stretch=1)
+
+        layout.addLayout(layout_resultados)
+
+        pagina.setLayout(layout)
+        return pagina
+
+    def agregar_fila_lagrange(self):
+        current_rows = self.tabla_datos_lagrange.rowCount()
+        self.tabla_datos_lagrange.insertRow(current_rows)
+
+    def eliminar_fila_lagrange(self):
+        current_row = self.tabla_datos_lagrange.currentRow()
+        if current_row >= 0:
+            self.tabla_datos_lagrange.removeRow(current_row)
 
     def pagina_regla_falsa(self):
         pagina = QWidget()
@@ -197,14 +290,14 @@ class MainWindow(QMainWindow):
             solucion, iteraciones = gauss_seidel(A, b)
 
             # Mostrar la solución en el área de salida
-            self.salida_gauss_seidel.clear()
-            self.salida_gauss_seidel.append(f"Convergió en {iteraciones} iteraciones.")
+            self.salida_lagrange.clear()
+            self.salida_lagrange.append(f"Convergió en {iteraciones} iteraciones.")
             for i, x_i in enumerate(solucion):
-                self.salida_gauss_seidel.append(f"x[{i+1}] = {x_i:.6f}")
+                self.salida_lagrange.append(f"x[{i+1}] = {x_i:.6f}")
 
         except Exception as e:
-            self.salida_gauss_seidel.clear()
-            self.salida_gauss_seidel.append(f"Error: {str(e)}")
+            self.salida_lagrange.clear()
+            self.salida_lagrange.append(f"Error: {str(e)}")
 
     def resolver_regla_falsa(self):
 
@@ -263,6 +356,80 @@ class MainWindow(QMainWindow):
             self.salida_regla_falsa.clear()
             self.salida_regla_falsa.append(f"Aviso: {str(e)} ")
 
+    def resolver_lagrange(self):
+        try:
+            # Obtener los datos de la tabla
+            puntos = []
+            for i in range(self.tabla_datos_lagrange.rowCount()):
+                x_item = self.tabla_datos_lagrange.item(i, 0)
+                y_item = self.tabla_datos_lagrange.item(i, 1)
+
+                if x_item and y_item and x_item.text() and y_item.text():
+                    try:
+                        x = float(x_item.text())
+                        y = float(y_item.text())
+                        puntos.append((x, y))
+                    except ValueError:
+                        raise ValueError(f"Valores no numéricos en fila {i+1}")
+                else:
+                    raise ValueError(f"Fila {i+1} incompleta")
+
+            if len(puntos) < 2:
+                raise ValueError("Se necesitan al menos 2 puntos para la interpolación")
+
+            # Separar las coordenadas x e y
+            x_vals = [p[0] for p in puntos]
+            y_vals = [p[1] for p in puntos]
+
+            # Obtener el valor a interpolar si se especificó
+            x_interpolar = None
+            if self.entrada_interpolar.text():
+                try:
+                    x_interpolar = float(self.entrada_interpolar.text())
+                except ValueError:
+                    raise ValueError("El valor a interpolar debe ser un número")
+
+            # Calcular el polinomio de Lagrange
+            polinomio, resultado = lagrange(puntos, x_interpolar)
+
+            # Mostrar resultados
+            self.salida_lagrange.clear()
+            self.salida_lagrange.append("Polinomio de Lagrange:")
+            self.salida_lagrange.append(f"P(x) = {polinomio}")
+
+            if x_interpolar is not None:
+                self.salida_lagrange.append("\nResultado de la interpolación:")
+                self.salida_lagrange.append(f"P({x_interpolar}) = {resultado}")
+
+            # Graficar los puntos y el polinomio
+            self.grafico_lagrange.clear()
+
+            # Graficar puntos de entrada
+            self.grafico_lagrange.plot(
+                x_vals, y_vals, pen=None, symbol="o", symbolSize=10, symbolBrush="b"
+            )
+
+            # Graficar polinomio de interpolación
+            if len(puntos) >= 2:
+                x_min, x_max = min(x_vals), max(x_vals)
+                x_range = x_max - x_min
+                x_plot = np.linspace(x_min - 0.1 * x_range, x_max + 0.1 * x_range, 100)
+
+                # Evaluar el polinomio (esto es simplificado, en la práctica necesitarías parsear el polinomio)
+                try:
+                    x_sym = sp.symbols("x")
+                    expr = sp.sympify(str(polinomio))
+                    f = sp.lambdify(x_sym, expr, "numpy")
+                    y_plot = f(x_plot)
+                    self.grafico_lagrange.plot(x_plot, y_plot, pen="r")
+                except:
+                    self.salida_lagrange.append(
+                        "\nNota: No se pudo graficar el polinomio automáticamente"
+                    )
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
 
 app = QApplication([])
 ventana = MainWindow()
@@ -273,6 +440,8 @@ app.setStyleSheet(
     QPushButton{font-size: 15pt;}
     QLineEdit{font-size: 15pt;}
     QListWidget{font-size: 15pt; font-weight:bold}
+    QTableWidget{font-size: 14pt;}
+    QTableWidget::view{}
     """
 )
 ventana.show()
