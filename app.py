@@ -97,9 +97,9 @@ class MainWindow(QMainWindow):
         layout.addLayout(layout_tablas)
 
         # Botón de resolver
-        boton_resolver = QPushButton("Resolver")
-        boton_resolver.clicked.connect(self.resolver_gauss_seidel)
-        layout.addWidget(boton_resolver)
+        boton_resolver2 = QPushButton("Resolver")
+        boton_resolver2.clicked.connect(self.resolver_gauss_seidel)
+        layout.addWidget(boton_resolver2)
 
         # Área de salida
         self.salida_gauss_seidel = QTextEdit()
@@ -239,9 +239,9 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.entrada_maxiter)
 
         # Botón de resolver
-        boton_resolver = QPushButton("Resolver")
-        boton_resolver.clicked.connect(self.resolver_regla_falsa)
-        layout.addWidget(boton_resolver)
+        boton_resolver1 = QPushButton("Resolver")
+        boton_resolver1.clicked.connect(self.resolver_regla_falsa)
+        layout.addWidget(boton_resolver1)
 
         # Gráfico y área de salida
         layout_resultados = QHBoxLayout()
@@ -290,14 +290,14 @@ class MainWindow(QMainWindow):
             solucion, iteraciones = gauss_seidel(A, b)
 
             # Mostrar la solución en el área de salida
-            self.salida_lagrange.clear()
-            self.salida_lagrange.append(f"Convergió en {iteraciones} iteraciones.")
+            self.salida_gauss_seidel.clear()
+            self.salida_gauss_seidel.append(f"Convergió en {iteraciones} iteraciones.")
             for i, x_i in enumerate(solucion):
-                self.salida_lagrange.append(f"x[{i+1}] = {x_i:.6f}")
+                self.salida_gauss_seidel.append(f"x[{i+1}] = {x_i:.6f}")
 
         except Exception as e:
-            self.salida_lagrange.clear()
-            self.salida_lagrange.append(f"Error: {str(e)}")
+            self.salida_gauss_seidel.clear()
+            self.salida_gauss_seidel.append(f"Error: {str(e)}")
 
     def resolver_regla_falsa(self):
 
